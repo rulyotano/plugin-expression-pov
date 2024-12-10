@@ -44,4 +44,17 @@ public class TermsOperatorsTests
         Assert.IsType<OrNode>(root);
         Assert.Equal("(VIP) or ((PL) and (DOCTOR))", root.ToString());
     }
+
+    [Theory]
+    [InlineData("PL.DOCTOR.!(DENTIST,physio).(VIP,PLUS)")]
+    public void ShouldParseCommonCase(string input)
+    {
+        var parser = new ExpressionParser(input);
+        
+        var result = parser.Parse(out NodeBase root);
+        
+        Assert.True(result.IsSuccess);
+        Assert.IsType<AndNode>(root);
+        Assert.Equal("(PL) and ((DOCTOR) and ((!((DENTIST) or (physio))) and ((VIP) or (PLUS))))", root.ToString());
+    }
 }
