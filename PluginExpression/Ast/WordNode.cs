@@ -1,6 +1,6 @@
-namespace PluginExpression.Nodes;
+namespace PluginExpression.Ast;
 
-public class PluginWordNode(string value) : PluginExpressionNode
+public class WordNode(string value) : NodeBase
 {
     public override bool Evaluate(IList<string> tags) => tags.Any(tag => string.Equals(tag, value, StringComparison.InvariantCultureIgnoreCase));
 }

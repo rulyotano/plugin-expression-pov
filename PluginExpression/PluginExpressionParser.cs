@@ -1,5 +1,5 @@
 using System.Text;
-using PluginExpression.Nodes;
+using PluginExpression.Ast;
 
 namespace PluginExpression;
 
@@ -21,14 +21,14 @@ public ref struct PluginExpressionParser(string expression)
     
     private bool IsEof => _lookAhead == expression.Length;
 
-    public ParseResult Parse(out PluginExpressionNode node)
+    public ParseResult Parse(out NodeBase nodeBase)
     {
-        return ParseOr(out node);
+        return ParseOr(out nodeBase);
     }
 
-    private ParseResult ParseOr(out PluginExpressionNode node)
+    private ParseResult ParseOr(out NodeBase nodeBase)
     {
-        node = PluginExpressionNode.FailNode;
+        nodeBase = NodeBase.FailNodeBase;
         ReadIgnoreCharacters();
         var leftResult = ParseAnd(out var leftNode);
         if (!leftResult.IsSuccess)
@@ -38,7 +38,7 @@ public ref struct PluginExpressionParser(string expression)
 
         if (_expressionSpan[_lookAhead] != OrCharacter)
         {
-            node = leftNode;
+            nodeBase = leftNode;
             return ParseResult.Success;
         }
         
@@ -49,13 +49,13 @@ public ref struct PluginExpressionParser(string expression)
         if (!rightResult.IsSuccess)
             return rightResult;
         
-        node = new PluginExpressionOrNode(leftNode, rightNode);
+        nodeBase = new OrNode(leftNode, rightNode);
         return ParseResult.Success;
     }
 
-    private ParseResult ParseAnd(out PluginExpressionNode node)
+    private ParseResult ParseAnd(out NodeBase nodeBase)
     {
-        node = PluginExpressionNode.FailNode;
+        nodeBase = NodeBase.FailNodeBase;
         ReadIgnoreCharacters();
         var leftResult = ParseTerm(out var leftNode);
         if (!leftResult.IsSuccess)
@@ -65,7 +65,7 @@ public ref struct PluginExpressionParser(string expression)
 
         if (_expressionSpan[_lookAhead] != AndCharacter)
         {
-            node = leftNode;
+            nodeBase = leftNode;
             return ParseResult.Success;
         }
 
@@ -76,29 +76,29 @@ public ref struct PluginExpressionParser(string expression)
         if (!rightResult.IsSuccess)
             return rightResult;
 
-        node = new PluginExpressionAndNode(leftNode, rightNode);
+        nodeBase = new AndNodeBase(leftNode, rightNode);
         return ParseResult.Success;
     }
 
-    private ParseResult ParseTerm(out PluginExpressionNode node)
+    private ParseResult ParseTerm(out NodeBase nodeBase)
     {
         ReadIgnoreCharacters();
         return _expressionSpan[_lookAhead] switch
         {
-            OpenParenthesisCharacter => ParseParenthesis(out node),
-            NegationCharacter => ParseNegation(out node),
-            NobodyCharacter => ParseNobody(out node),
-            EverybodyCharacter => ParseEverybody(out node),
-            _ => ParseWord(out node)
+            OpenParenthesisCharacter => ParseParenthesis(out nodeBase),
+            NegationCharacter => ParseNegation(out nodeBase),
+            NobodyCharacter => ParseNobody(out nodeBase),
+            EverybodyCharacter => ParseEverybody(out nodeBase),
+            _ => ParseWord(out nodeBase)
         };
     }
 
-    private ParseResult ParseParenthesis(out PluginExpressionNode node)
+    private ParseResult ParseParenthesis(out NodeBase nodeBase)
     {
-        node = PluginExpressionNode.FailNode;
+        nodeBase = NodeBase.FailNodeBase;
         _lookAhead++;
         
-        var result = ParseOr(out node);
+        var result = ParseOr(out nodeBase);
         if (!result.IsSuccess)
             return result;
         
@@ -111,31 +111,31 @@ public ref struct PluginExpressionParser(string expression)
         return ParseResult.Success;
     }
 
-    private ParseResult ParseNegation(out PluginExpressionNode node)
+    private ParseResult ParseNegation(out NodeBase nodeBase)
     {
         _lookAhead++;
-        var result = ParseOr(out node);
+        var result = ParseOr(out nodeBase);
         if (!result.IsSuccess)
             return result;
-        node = new PluginNegationNode(node);
+        nodeBase = new NegationNode(nodeBase);
         return ParseResult.Success;
     }
 
-    private ParseResult ParseEverybody(out PluginExpressionNode node)
+    private ParseResult ParseEverybody(out NodeBase nodeBase)
     {
         _lookAhead++;
-        node = new PluginTrueNode();
+        nodeBase = new TrueNode();
         return ParseResult.Success;
     }
 
-    private ParseResult ParseNobody(out PluginExpressionNode node)
+    private ParseResult ParseNobody(out NodeBase nodeBase)
     {
         _lookAhead++;
-        node = new PluginNegationNode(new PluginTrueNode());
+        nodeBase = new NegationNode(new TrueNode());
         return ParseResult.Success;
     }
 
-    private ParseResult ParseWord(out PluginExpressionNode node)
+    private ParseResult ParseWord(out NodeBase nodeBase)
     {
         ReadIgnoreCharacters();
         var wordBuilder = new StringBuilder();
@@ -147,11 +147,11 @@ public ref struct PluginExpressionParser(string expression)
 
         if (wordBuilder.Length == 0)
         {
-            node = PluginExpressionNode.FailNode;
+            nodeBase = NodeBase.FailNodeBase;
             return new ParseResult(false, [GetErrorString($"Characters not in collection: '{NoWordCharacters}'")]);
         }
         
-        node = new PluginWordNode(wordBuilder.ToString());
+        nodeBase = new WordNode(wordBuilder.ToString());
         return ParseResult.Success;
     }
 

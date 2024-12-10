@@ -1,4 +1,4 @@
-namespace PluginExpressionTests;
+namespace PluginExpressionTests.ParseTests;
 
 public class UnitTest1
 {
