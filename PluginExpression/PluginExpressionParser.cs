@@ -36,7 +36,7 @@ public ref struct PluginExpressionParser(string expression)
         
         ReadIgnoreCharacters();
 
-        if (_expressionSpan[_lookAhead] != OrCharacter)
+        if (IsEof || _expressionSpan[_lookAhead] != OrCharacter)
         {
             nodeBase = leftNode;
             return ParseResult.Success;
@@ -63,7 +63,7 @@ public ref struct PluginExpressionParser(string expression)
 
         ReadIgnoreCharacters();
 
-        if (_expressionSpan[_lookAhead] != AndCharacter)
+        if (IsEof ||_expressionSpan[_lookAhead] != AndCharacter)
         {
             nodeBase = leftNode;
             return ParseResult.Success;
@@ -83,6 +83,12 @@ public ref struct PluginExpressionParser(string expression)
     private ParseResult ParseTerm(out NodeBase nodeBase)
     {
         ReadIgnoreCharacters();
+        if (IsEof)
+        {
+            nodeBase = NodeBase.FailNodeBase;
+            return new ParseResult(false, [GetErrorString($"'{OpenParenthesisCharacter}' or '{NegationCharacter}' or '{NoWordCharacters}' or '{EverybodyCharacter}' or Word")]);
+        }
+
         return _expressionSpan[_lookAhead] switch
         {
             OpenParenthesisCharacter => ParseParenthesis(out nodeBase),
