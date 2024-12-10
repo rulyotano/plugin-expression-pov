@@ -72,11 +72,11 @@ public ref struct PluginExpressionParser(string expression)
         _lookAhead++;
 
         ReadIgnoreCharacters();
-        var rightResult = ParseOr(out var rightNode);
+        var rightResult = ParseAnd(out var rightNode);
         if (!rightResult.IsSuccess)
             return rightResult;
 
-        nodeBase = new AndNodeBase(leftNode, rightNode);
+        nodeBase = new AndNode(leftNode, rightNode);
         return ParseResult.Success;
     }
 
