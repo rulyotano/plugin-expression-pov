@@ -113,4 +113,43 @@ public class LogicOperatorTests
         Assert.IsType<OrNode>(root);
         Assert.Equal("(1) or (((1) and ((1) and (1))) or (1))", root.ToString());
     }
+
+    [Theory]
+    [InlineData("*.(*,*)")]
+    public void ParenthesisShouldHaveMorePriority(string input)
+    {
+        var parser = new ExpressionParser(input);
+        
+        var result = parser.Parse(out NodeBase root);
+        
+        Assert.True(result.IsSuccess);
+        Assert.IsType<AndNode>(root);
+        Assert.Equal("(1) and ((1) or (1))", root.ToString());
+    }
+
+    [Theory]
+    [InlineData("*.!*.*")]
+    public void NegationShouldHaveLessPriority(string input)
+    {
+        var parser = new ExpressionParser(input);
+        
+        var result = parser.Parse(out NodeBase root);
+        
+        Assert.True(result.IsSuccess);
+        Assert.IsType<AndNode>(root);
+        Assert.Equal("(1) and ((!(1)) and (1))", root.ToString());
+    }
+
+    [Theory]
+    [InlineData("*.!(*,*)")]
+    public void NegationShouldWorkOkWithParenthesis(string input)
+    {
+        var parser = new ExpressionParser(input);
+        
+        var result = parser.Parse(out NodeBase root);
+        
+        Assert.True(result.IsSuccess);
+        Assert.IsType<AndNode>(root);
+        Assert.Equal("(1) and (!((1) or (1)))", root.ToString());
+    }
 }

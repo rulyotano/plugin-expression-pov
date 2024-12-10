@@ -120,7 +120,7 @@ public ref struct ExpressionParser(string expression)
     private ParseResult ParseNegation(out NodeBase nodeBase)
     {
         _lookAhead++;
-        var result = ParseOr(out nodeBase);
+        var result = ParseTerm(out nodeBase);
         if (!result.IsSuccess)
             return result;
         nodeBase = new NegationNode(nodeBase);
