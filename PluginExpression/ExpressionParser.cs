@@ -3,7 +3,7 @@ using PluginExpression.Ast;
 
 namespace PluginExpression;
 
-public ref struct PluginExpressionParser(string expression)
+public ref struct ExpressionParser(string expression)
 {
     private const char OrCharacter = ',';
     private const char AndCharacter = '.';
