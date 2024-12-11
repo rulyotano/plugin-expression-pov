@@ -95,6 +95,13 @@ public class ParseErrorTests
         AssertErrorAt(term, expectedPosition);
     }
 
+    [Theory]
+    [InlineData("ABC DEF", 4)]
+    public void WhenWordSeparated(string term, int expectedPosition)
+    {
+        AssertErrorAt(term, expectedPosition);
+    }
+
     private void AssertErrorAt(string expression, int position)
     {
         var parser = new ExpressionParser(expression);
