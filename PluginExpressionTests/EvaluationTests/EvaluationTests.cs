@@ -33,6 +33,9 @@ public class EvaluationTests(ITestOutputHelper output)
     [InlineData("A", null, false, "Word and null should be false")]
     [InlineData("!A", "", true, "Negation and empty should be true")]
     [InlineData("!A", null, true, "Negation and null should be true")]
+    [InlineData("PL.(DOCTOR,CLINIC).!(DENTIST,PHYSIO)", "PL,DOCTOR", true, "")]
+    [InlineData("PL.(DOCTOR,CLINIC).!(DENTIST,PHYSIO)", "PL,SECRETARY", false, "")]
+    [InlineData("PL.(DOCTOR,CLINIC).!(DENTIST,PHYSIO)", "PL,DOCTOR,dentist", false, "")]
     public void ShouldEvaluateCorrectly(string expression, string? tags, bool expectedResult, string message)
     {
         output.WriteLine(message);
