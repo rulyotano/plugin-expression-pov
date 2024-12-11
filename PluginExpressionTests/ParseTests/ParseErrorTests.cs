@@ -8,27 +8,13 @@ public class ParseErrorTests
     [Fact]
     public void WhenEmptyRuleShouldGetParseError()
     {
-        var parser = new ExpressionParser(string.Empty);
-        
-        var result = parser.Parse(out NodeBase root);
-        
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ParsingFailed>(root);
-        Assert.Single(result.Errors);
-        Assert.Equal(0, result.Errors.First().Position);
+        AssertErrorAt(string.Empty, 0);
     }
 
     [Fact]
     public void WhenNullRuleShouldGetParseError()
     {
-        var parser = new ExpressionParser(null!);
-        
-        var result = parser.Parse(out NodeBase root);
-        
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ParsingFailed>(root);
-        Assert.Single(result.Errors);
-        Assert.Equal(0, result.Errors.First().Position);
+        AssertErrorAt(null!, 0);
     }
 
     [Theory]
@@ -36,14 +22,7 @@ public class ParseErrorTests
     [InlineData(',')]
     public void WhenOperatorDoesntClose(char op)
     {
-        var parser = new ExpressionParser($"ABC{op}");
-        
-        var result = parser.Parse(out NodeBase root);
-        
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ParsingFailed>(root);
-        Assert.Single(result.Errors);
-        Assert.Equal(4, result.Errors.First().Position);
+        AssertErrorAt($"ABC{op}", 4);
     }
 
     [Theory]
@@ -51,14 +30,7 @@ public class ParseErrorTests
     [InlineData(',')]
     public void WhenOperatorDoesntHaveRightPart(char op)
     {
-        var parser = new ExpressionParser($"{op}ABC");
-        
-        var result = parser.Parse(out NodeBase root);
-        
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ParsingFailed>(root);
-        Assert.Single(result.Errors);
-        Assert.Equal(0, result.Errors.First().Position);
+        AssertErrorAt($"{op}ABC", 0);
     }
 
     [Theory]
@@ -68,78 +40,54 @@ public class ParseErrorTests
     [InlineData(',', '.')]
     public void WhenOperatorsAppearsTogether(char leftOp, char rightOp)
     {
-        var parser = new ExpressionParser($"ABC{leftOp}{rightOp}EFG");
-        
-        var result = parser.Parse(out NodeBase root);
-        
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ParsingFailed>(root);
-        Assert.Single(result.Errors);
-        Assert.Equal(4, result.Errors.First().Position);
+        AssertErrorAt($"ABC{leftOp}{rightOp}EFG", 4);
     }
 
     [Fact]
     public void WhenParenthesisIsEmptyShouldGetParseError()
     {
-        var parser = new ExpressionParser("ABC.()");
-        
-        var result = parser.Parse(out NodeBase root);
-        
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ParsingFailed>(root);
-        Assert.Single(result.Errors);
-        Assert.Equal(5, result.Errors.First().Position);
+        AssertErrorAt("ABC.()", 5);
     }
 
     [Fact]
     public void WhenParenthesisDidntClose()
     {
-        var parser = new ExpressionParser("ABC.(EFG");
-        
-        var result = parser.Parse(out NodeBase root);
-        
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ParsingFailed>(root);
-        Assert.Single(result.Errors);
-        Assert.Equal(8, result.Errors.First().Position);
+        AssertErrorAt("ABC.(EFG", 8);
     }
 
     [Fact]
     public void WhenParenthesisDidntOpen()
     {
-        var parser = new ExpressionParser("ABC.EFG)");
-        
-        var result = parser.Parse(out NodeBase root);
-        
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ParsingFailed>(root);
-        Assert.Single(result.Errors);
-        Assert.Equal(7, result.Errors.First().Position);
+        AssertErrorAt("ABC.EFG)", 7);
     }
 
     [Fact]
     public void WhenParenthesisDidntOpen2()
     {
-        var parser = new ExpressionParser("ABC.(E)).FG");
-        
-        var result = parser.Parse(out NodeBase root);
-        
-        Assert.False(result.IsSuccess);
-        Assert.IsType<ParsingFailed>(root);
-        Assert.Single(result.Errors);
-        Assert.Equal(7, result.Errors.First().Position);
+        AssertErrorAt("ABC.(E)).FG", 7);
     }
 
     [Fact]
     public void WhenClosingParenthesisAtTheBeginning()
     {
-        var parser = new ExpressionParser(")ABC.EFG");
+        AssertErrorAt(")ABC.EFG", 0);
+    }
+
+    [Fact]
+    public void WhenNegatingEmpty()
+    {
+        AssertErrorAt("!", 1);
+    }
+
+    private void AssertErrorAt(string expression, int position)
+    {
+        var parser = new ExpressionParser(expression);
         
         var result = parser.Parse(out NodeBase root);
         
         Assert.False(result.IsSuccess);
         Assert.IsType<ParsingFailed>(root);
         Assert.Single(result.Errors);
-        Assert.Equal(0, result.Errors.First().Position);
+        Assert.Equal(position, result.Errors.First().Position);
     }
 }
