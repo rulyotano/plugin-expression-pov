@@ -25,6 +25,14 @@ public class EvaluationTests(ITestOutputHelper output)
     [InlineData("A.B", "DOCTOR,VIP,PL,ALL,A", false, "When AND and doctor only has one should return false")]
     [InlineData("A.B", "ALL,B,A", true, "When AND and doctor only has both should return true")]
     [InlineData("A.B", "b,a", true, "And should be camel case insensitive")]
+    [InlineData("A.B", "", false, "And and empty should be false")]
+    [InlineData("A.B", null, false, "And and null should be false")]
+    [InlineData("A,B", "", false, "Or and empty should be false")]
+    [InlineData("A,B", null, false, "Or and null should be false")]
+    [InlineData("A", "", false, "Word and empty should be false")]
+    [InlineData("A", null, false, "Word and null should be false")]
+    [InlineData("!A", "", true, "Negation and empty should be true")]
+    [InlineData("!A", null, true, "Negation and null should be true")]
     public void ShouldEvaluateCorrectly(string expression, string? tags, bool expectedResult, string message)
     {
         output.WriteLine(message);

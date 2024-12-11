@@ -5,5 +5,5 @@ public abstract class BinaryNodeBase(NodeBase left, NodeBase right)
 {
     protected abstract Func<IList<string>, NodeBase, NodeBase, bool> EvaluateFunction { get; }
     
-    public override bool Evaluate(IList<string> tags) => EvaluateFunction(tags, left, right);
+    public override bool Evaluate(IList<string>? tags) => EvaluateFunction(tags ?? [], left, right);
 }
