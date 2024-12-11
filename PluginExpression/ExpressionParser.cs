@@ -3,7 +3,7 @@ using PluginExpression.Ast;
 
 namespace PluginExpression;
 
-public ref struct ExpressionParser(string expression)
+public ref struct ExpressionParser(string? expression)
 {
     private const char OrCharacter = ',';
     private const char AndCharacter = '.';
@@ -19,11 +19,20 @@ public ref struct ExpressionParser(string expression)
     private readonly ReadOnlySpan<char> _ignoreSpan = IgnoreCharacters.AsSpan();
     private readonly ReadOnlySpan<char> _nonWordSpan = NoWordCharacters.AsSpan();
     
-    private bool IsEof => _lookAhead == expression.Length;
+    private bool IsEof => _lookAhead == (expression?.Length ?? 0);
 
     public ParseResult Parse(out NodeBase nodeBase)
     {
-        return ParseOr(out nodeBase);
+        nodeBase = NodeBase.FailNodeBase;
+        if (expression is null)
+            return new ParseResult(false, [new ParseError(0, "Expression is empty.")]);
+        var result = ParseOr(out nodeBase);
+        
+        ReadIgnoreCharacters();
+        if (IsEof) return result;
+        
+        nodeBase = NodeBase.FailNodeBase;
+        return new ParseResult(false, [GetError("End of expression")]);
     }
 
     private ParseResult ParseOr(out NodeBase nodeBase)
@@ -86,7 +95,7 @@ public ref struct ExpressionParser(string expression)
         if (IsEof)
         {
             nodeBase = NodeBase.FailNodeBase;
-            return new ParseResult(false, [GetErrorString($"'{OpenParenthesisCharacter}' or '{NegationCharacter}' or '{NoWordCharacters}' or '{EverybodyCharacter}' or Word")]);
+            return new ParseResult(false, [GetError($"'{OpenParenthesisCharacter}' or '{NegationCharacter}' or '{NobodyCharacter}' or '{EverybodyCharacter}' or Value")]);
         }
 
         return _expressionSpan[_lookAhead] switch
@@ -110,8 +119,8 @@ public ref struct ExpressionParser(string expression)
         
         ReadIgnoreCharacters();
 
-        if (_expressionSpan[_lookAhead] != CloseParenthesisCharacter)
-            return new ParseResult(false, [GetErrorString($"{CloseParenthesisCharacter}")]);
+        if (IsEof || _expressionSpan[_lookAhead] != CloseParenthesisCharacter)
+            return new ParseResult(false, [GetError($"{CloseParenthesisCharacter}")]);
         
         _lookAhead++;
         return ParseResult.Success;
@@ -154,7 +163,7 @@ public ref struct ExpressionParser(string expression)
         if (wordBuilder.Length == 0)
         {
             nodeBase = NodeBase.FailNodeBase;
-            return new ParseResult(false, [GetErrorString($"Characters not in collection: '{NoWordCharacters}'")]);
+            return new ParseResult(false, [GetError("Value")]);
         }
         
         nodeBase = new WordNode(wordBuilder.ToString());
@@ -168,11 +177,20 @@ public ref struct ExpressionParser(string expression)
             _lookAhead++;
         }
     }
-
-    private string GetErrorString(string expected) => $"Position: {_lookAhead}. Expected '{expected}' but found '{_expressionSpan[_lookAhead]}'.";
+     
+    private ParseError GetError(string expected)
+    {
+        var found = IsEof ? "EOF" : _expressionSpan[_lookAhead].ToString(); 
+        return new ParseError(_lookAhead, $"Expected \"{expected}\" but found \"{found}\".");
+    }
 }
 
-public record ParseResult(bool IsSuccess, IEnumerable<string> Errors)
+public record ParseResult(bool IsSuccess, IEnumerable<ParseError> Errors)
 {
-    public static ParseResult Success { get; } = new(true, Array.Empty<string>());
+    public static ParseResult Success { get; } = new(true, Array.Empty<ParseError>());
+}
+
+public record ParseError(int Position, string ErrorMessage)
+{
+    public override string ToString() => $"{Position}: {ErrorMessage}";
 }
