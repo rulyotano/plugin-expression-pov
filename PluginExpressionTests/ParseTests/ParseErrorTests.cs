@@ -79,6 +79,22 @@ public class ParseErrorTests
         AssertErrorAt("!", 1);
     }
 
+    [Theory]
+    [InlineData("ABC.!.ADS", 5)]
+    [InlineData("ABC . ! . ADS", 8)]
+    public void WhenNegatingNotFollowedByTerm(string term, int expectedPosition)
+    {
+        AssertErrorAt(term, expectedPosition);
+    }
+
+    [Theory]
+    [InlineData("ABC.*~.ABC", 5)]
+    [InlineData("ABC.*  ~.ABC", 7)]
+    public void WhenAllAndNoneTogether(string term, int expectedPosition)
+    {
+        AssertErrorAt(term, expectedPosition);
+    }
+
     private void AssertErrorAt(string expression, int position)
     {
         var parser = new ExpressionParser(expression);
