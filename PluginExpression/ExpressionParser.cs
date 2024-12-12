@@ -23,6 +23,7 @@ public ref struct ExpressionParser(string? expression)
 
     public ParseResult Parse(out NodeBase nodeBase)
     {
+        _lookAhead = 0;
         nodeBase = NodeBase.FailNodeBase;
         if (expression is null)
             return new ParseResult(false, [new ParseError(0, "Expression is empty.")]);
