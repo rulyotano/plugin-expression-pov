@@ -18,139 +18,139 @@ public ref struct ExpressionParser(string? expression)
     private readonly ReadOnlySpan<char> _expressionSpan = expression.AsSpan();
     private readonly ReadOnlySpan<char> _ignoreSpan = IgnoreCharacters.AsSpan();
     private readonly ReadOnlySpan<char> _nonWordSpan = NoWordCharacters.AsSpan();
+    private ParseError? _error = null;
     
     private bool IsEof => _lookAhead == (expression?.Length ?? 0);
+    private bool IsError => _error is not null;
 
     public ParseResult Parse(out NodeBase nodeBase)
     {
+        Initialize();
         nodeBase = NodeBase.FailNodeBase;
         if (expression is null)
             return new ParseResult(false, [new ParseError(0, "Expression is empty.")]);
-        var result = ParseOr(out nodeBase);
+        nodeBase = ParseOr();
+        if (IsError)
+            return new ParseResult(false, [_error!]);
         
         ReadIgnoreCharacters();
-        if (IsEof) return result;
+        if (IsEof) return ParseResult.Success;
         
         nodeBase = NodeBase.FailNodeBase;
         return new ParseResult(false, [GetError("End of expression")]);
     }
 
-    private ParseResult ParseOr(out NodeBase nodeBase)
+    private void Initialize()
     {
-        nodeBase = NodeBase.FailNodeBase;
+        _lookAhead = 0;
+        _error = null;
+    }
+
+    private NodeBase ParseOr()
+    {
         ReadIgnoreCharacters();
-        var leftResult = ParseAnd(out var leftNode);
-        if (!leftResult.IsSuccess)
+        var leftResult = ParseAnd();
+        if (IsError)
             return leftResult;
         
         ReadIgnoreCharacters();
 
         if (IsEof || _expressionSpan[_lookAhead] != OrCharacter)
-        {
-            nodeBase = leftNode;
-            return ParseResult.Success;
-        }
+            return leftResult;
         
         _lookAhead++;
         
         ReadIgnoreCharacters();
-        var rightResult = ParseOr(out var rightNode);
-        if (!rightResult.IsSuccess)
+        var rightResult = ParseOr();
+        if (IsError)
             return rightResult;
         
-        nodeBase = new OrNode(leftNode, rightNode);
-        return ParseResult.Success;
+        return new OrNode(leftResult, rightResult);
     }
 
-    private ParseResult ParseAnd(out NodeBase nodeBase)
+    private NodeBase ParseAnd()
     {
-        nodeBase = NodeBase.FailNodeBase;
         ReadIgnoreCharacters();
-        var leftResult = ParseTerm(out var leftNode);
-        if (!leftResult.IsSuccess)
+        var leftResult = ParseTerm();
+        if (IsError)
             return leftResult;
 
         ReadIgnoreCharacters();
 
         if (IsEof ||_expressionSpan[_lookAhead] != AndCharacter)
-        {
-            nodeBase = leftNode;
-            return ParseResult.Success;
-        }
+            return leftResult;
 
         _lookAhead++;
 
         ReadIgnoreCharacters();
-        var rightResult = ParseAnd(out var rightNode);
-        if (!rightResult.IsSuccess)
+        var rightResult = ParseAnd();
+        if (IsError)
             return rightResult;
 
-        nodeBase = new AndNode(leftNode, rightNode);
-        return ParseResult.Success;
+        return new AndNode(leftResult, rightResult);
     }
 
-    private ParseResult ParseTerm(out NodeBase nodeBase)
+    private NodeBase ParseTerm()
     {
         ReadIgnoreCharacters();
         if (IsEof)
         {
-            nodeBase = NodeBase.FailNodeBase;
-            return new ParseResult(false, [GetError($"'{OpenParenthesisCharacter}' or '{NegationCharacter}' or '{NobodyCharacter}' or '{EverybodyCharacter}' or Value")]);
+            _error = GetError($"'{OpenParenthesisCharacter}' or '{NegationCharacter}' or '{NobodyCharacter}' or '{EverybodyCharacter}' or Value");
+            return NodeBase.FailNodeBase;
         }
 
         return _expressionSpan[_lookAhead] switch
         {
-            OpenParenthesisCharacter => ParseParenthesis(out nodeBase),
-            NegationCharacter => ParseNegation(out nodeBase),
-            NobodyCharacter => ParseNobody(out nodeBase),
-            EverybodyCharacter => ParseEverybody(out nodeBase),
-            _ => ParseWord(out nodeBase)
+            OpenParenthesisCharacter => ParseParenthesis(),
+            NegationCharacter => ParseNegation(),
+            NobodyCharacter => ParseNobody(),
+            EverybodyCharacter => ParseEverybody(),
+            _ => ParseWord()
         };
     }
 
-    private ParseResult ParseParenthesis(out NodeBase nodeBase)
+    private NodeBase ParseParenthesis()
     {
-        nodeBase = NodeBase.FailNodeBase;
         _lookAhead++;
         
-        var result = ParseOr(out nodeBase);
-        if (!result.IsSuccess)
+        var result = ParseOr();
+        if (IsError)
             return result;
         
         ReadIgnoreCharacters();
 
         if (IsEof || _expressionSpan[_lookAhead] != CloseParenthesisCharacter)
-            return new ParseResult(false, [GetError($"{CloseParenthesisCharacter}")]);
+        {
+            _error = GetError($"{CloseParenthesisCharacter}");
+            return NodeBase.FailNodeBase;
+        }
         
         _lookAhead++;
-        return ParseResult.Success;
+        return result;
     }
 
-    private ParseResult ParseNegation(out NodeBase nodeBase)
+    private NodeBase ParseNegation()
     {
         _lookAhead++;
-        var result = ParseTerm(out nodeBase);
-        if (!result.IsSuccess)
-            return result;
-        nodeBase = new NegationNode(nodeBase);
-        return ParseResult.Success;
+        var term = ParseTerm();
+        if (IsError)
+            return term;
+        return new NegationNode(term);
     }
 
-    private ParseResult ParseEverybody(out NodeBase nodeBase)
+    private NodeBase ParseEverybody()
     {
         _lookAhead++;
-        nodeBase = new TrueNode();
-        return ParseResult.Success;
+        return new TrueNode();
     }
 
-    private ParseResult ParseNobody(out NodeBase nodeBase)
+    private NodeBase ParseNobody()
     {
         _lookAhead++;
-        nodeBase = new NegationNode(new TrueNode());
-        return ParseResult.Success;
+        return new NegationNode(new TrueNode());
     }
 
-    private ParseResult ParseWord(out NodeBase nodeBase)
+    private NodeBase ParseWord()
     {
         ReadIgnoreCharacters();
         var wordBuilder = new StringBuilder();
@@ -160,14 +160,10 @@ public ref struct ExpressionParser(string? expression)
             _lookAhead++;
         }
 
-        if (wordBuilder.Length == 0)
-        {
-            nodeBase = NodeBase.FailNodeBase;
-            return new ParseResult(false, [GetError("Value")]);
-        }
-        
-        nodeBase = new WordNode(wordBuilder.ToString());
-        return ParseResult.Success;
+        if (wordBuilder.Length != 0) return new WordNode(wordBuilder.ToString());
+
+        _error = GetError("Value");
+        return NodeBase.FailNodeBase;
     }
 
     private void ReadIgnoreCharacters()
