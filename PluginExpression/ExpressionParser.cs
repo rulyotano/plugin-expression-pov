@@ -20,8 +20,8 @@ public ref struct ExpressionParser(string? expression)
     private readonly ReadOnlySpan<char> _nonWordSpan = NoWordCharacters.AsSpan();
     private ParseError? _error = null;
     
-    private bool IsEof => _lookAhead == (expression?.Length ?? 0);
-    private bool IsError => _error is not null;
+    private bool IsEof() => _lookAhead == (expression?.Length ?? 0);
+    private bool IsError() => _error is not null;
 
     public ParseResult Parse(out NodeBase nodeBase)
     {
@@ -30,11 +30,11 @@ public ref struct ExpressionParser(string? expression)
         if (expression is null)
             return new ParseResult(false, [new ParseError(0, "Expression is empty.")]);
         nodeBase = ParseOr();
-        if (IsError)
+        if (IsError())
             return new ParseResult(false, [_error!]);
         
         ReadIgnoreCharacters();
-        if (IsEof) return ParseResult.Success;
+        if (IsEof()) return ParseResult.Success;
         
         nodeBase = NodeBase.FailNodeBase;
         return new ParseResult(false, [GetError("End of expression")]);
@@ -50,19 +50,19 @@ public ref struct ExpressionParser(string? expression)
     {
         ReadIgnoreCharacters();
         var leftResult = ParseAnd();
-        if (IsError)
+        if (IsError())
             return leftResult;
         
         ReadIgnoreCharacters();
 
-        if (IsEof || _expressionSpan[_lookAhead] != OrCharacter)
+        if (IsEof() || _expressionSpan[_lookAhead] != OrCharacter)
             return leftResult;
         
         _lookAhead++;
         
         ReadIgnoreCharacters();
         var rightResult = ParseOr();
-        if (IsError)
+        if (IsError())
             return rightResult;
         
         return new OrNode(leftResult, rightResult);
@@ -72,19 +72,19 @@ public ref struct ExpressionParser(string? expression)
     {
         ReadIgnoreCharacters();
         var leftResult = ParseTerm();
-        if (IsError)
+        if (IsError())
             return leftResult;
 
         ReadIgnoreCharacters();
 
-        if (IsEof ||_expressionSpan[_lookAhead] != AndCharacter)
+        if (IsEof() ||_expressionSpan[_lookAhead] != AndCharacter)
             return leftResult;
 
         _lookAhead++;
 
         ReadIgnoreCharacters();
         var rightResult = ParseAnd();
-        if (IsError)
+        if (IsError())
             return rightResult;
 
         return new AndNode(leftResult, rightResult);
@@ -93,7 +93,7 @@ public ref struct ExpressionParser(string? expression)
     private NodeBase ParseTerm()
     {
         ReadIgnoreCharacters();
-        if (IsEof)
+        if (IsEof())
         {
             _error = GetError($"'{OpenParenthesisCharacter}' or '{NegationCharacter}' or '{NobodyCharacter}' or '{EverybodyCharacter}' or Value");
             return NodeBase.FailNodeBase;
@@ -114,12 +114,12 @@ public ref struct ExpressionParser(string? expression)
         _lookAhead++;
         
         var result = ParseOr();
-        if (IsError)
+        if (IsError())
             return result;
         
         ReadIgnoreCharacters();
 
-        if (IsEof || _expressionSpan[_lookAhead] != CloseParenthesisCharacter)
+        if (IsEof() || _expressionSpan[_lookAhead] != CloseParenthesisCharacter)
         {
             _error = GetError($"{CloseParenthesisCharacter}");
             return NodeBase.FailNodeBase;
@@ -133,7 +133,7 @@ public ref struct ExpressionParser(string? expression)
     {
         _lookAhead++;
         var term = ParseTerm();
-        if (IsError)
+        if (IsError())
             return term;
         return new NegationNode(term);
     }
@@ -154,7 +154,7 @@ public ref struct ExpressionParser(string? expression)
     {
         ReadIgnoreCharacters();
         var wordBuilder = new StringBuilder();
-        while (!IsEof && !_nonWordSpan.Contains(_expressionSpan[_lookAhead]))
+        while (!IsEof() && !_nonWordSpan.Contains(_expressionSpan[_lookAhead]))
         {
             wordBuilder.Append(_expressionSpan[_lookAhead]);
             _lookAhead++;
@@ -168,7 +168,7 @@ public ref struct ExpressionParser(string? expression)
 
     private void ReadIgnoreCharacters()
     {
-        while (!IsEof && _ignoreSpan.Contains(_expressionSpan[_lookAhead]))
+        while (!IsEof() && _ignoreSpan.Contains(_expressionSpan[_lookAhead]))
         {
             _lookAhead++;
         }
@@ -176,7 +176,7 @@ public ref struct ExpressionParser(string? expression)
      
     private ParseError GetError(string expected)
     {
-        var found = IsEof ? "EOF" : _expressionSpan[_lookAhead].ToString(); 
+        var found = IsEof() ? "EOF" : _expressionSpan[_lookAhead].ToString(); 
         return new ParseError(_lookAhead, $"Expected \"{expected}\" but found \"{found}\".");
     }
 }
